@@ -4,6 +4,7 @@ from __future__ import division
 import time
 import os
 import sys
+import re
 from multiprocessing import cpu_count
 
 
@@ -69,6 +70,43 @@ class MachineLoadMonitor():
             avg_recv_drop = (net_stat2[k]['recv_drop'] - net_stat1[k]['recv_drop']) / 60 
             ang_trans_drop = (net_stat2[k]['trans_drop'] - net_stat1[k]['trans_drop']) / 60 
             print k,avg_recv_bytes,avg_trans_bytes,avg_recv_packet,avg_trans_packet,avg_recv_drop,ang_trans_drop
+
+    def get_io_stat(self):
+        io_file = /proc/diskstats
+        io_stat = {}
+        f = open(io_file,'r')
+        for line in f:
+            #   8      34 sdc2 115 0 17752 4144 0 0 0 0 0 3896 4144
+            (main_dev_num,next_dev_num,dev_name,read_succ_count,merge_read_count,read_block_count,
+            read_time,write_succ_count,merge_write_count,write_block_count,write_time,io_progress,
+            io_time,io_spend_time)=line.split(' ')[0:14]
+            if re.match('sd',dev_name):
+                io.stat[dev_name]={'read_succ_count':read_succ_count,'merge_read_count':merge_read_count,
+                'read_block_count':read_block_count,'read_time':read_time,
+                'write_succ_count':write_succ_count,'merge_write_count':merge_write_count,
+                'write_block_count':write_block_count,'write_time':write_time,
+                'io_progress':io_progress,'io_time':io_time,'io_spend_time':io_spend_time}
+            f.close()
+            return io_stat
+    def get_io_load(self):
+        io_time1 = self.get_io_stat()
+        time.sleed(10)
+        io_time2 = self.get_io_stat()
+        for k in io_time2:
+            read_succ_count = int(io_time2[k]['read_succ_count']) - int(io_time1[k]['read_succ_count'])
+            merge_read_count = int(io_time2[k]['merge_read_count']) - int(io_time1[k]['merge_read_count'])
+            read_block_count = int(io_time2[k]['read_block_count']) - int(io_time1[k]['read_block_count'])
+            read_time = int(io_time2[k]['read_time']) - int(io_time1[k]['read_time'])
+            write_succ_count = int(io_time2[k]['write_succ_count']) - int(io_time1[k]['write_succ_count'])
+            merge_write_count = int(io_time2[k]['merge_write_count']) - int(io_time1[k]['merge_write_count'])
+            write_block_count = int(io_time2[k]['write_block_count']) - int(io_time1[k]['write_block_count'])
+            write_time = int(io_time2[k]['write_time']) - int(io_time1[k]['write_time'])
+            io_progress = int(io_time2[k]['io_progress']) - int(io_time1[k]['io_progress'])
+            io_time = int(io_time2[k]['io_time']) - int(io_time1[k]['io_time'])
+            io_spend_time = = int(io_time2[k]['io_spend_time']) - int(io_time1[k]['io_spend_time'])
+
+
+
 
 if __name__ == '__main__':
     a=MachineLoadMonitor()
